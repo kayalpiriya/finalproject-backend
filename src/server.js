@@ -3,6 +3,9 @@ import express from 'express';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import cors from 'cors';
+import session from "express-session";
+import passport from "passport";
+import "./Controllers/googleAuth.js"; // import the strategy
 
 import authRoutes from './Routes/authRoutes.js';
 import productRoutes from './Routes/productRoutes.js';
@@ -18,6 +21,11 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+
+app.use(session({ secret: "secretkey", resave: false, saveUninitialized: true }));
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Connect to MongoDB
 mongoose.connect(`mongodb+srv://kayalpiriya_09:kayal2004@kayalpiriya.d4mp54n.mongodb.net/?appName=kayalpiriya`)
