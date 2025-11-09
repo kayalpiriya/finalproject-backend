@@ -6,6 +6,8 @@ import cors from 'cors';
 import session from "express-session";
 import passport from "passport";
 import "./Controllers/googleAuth.js"; // import the strategy
+import aiRoutes from "./Routes/aiRoutes.js";
+
 
 import authRoutes from './Routes/authRoutes.js';
 import productRoutes from './Routes/productRoutes.js';
@@ -42,6 +44,8 @@ app.use("/reviews", reviewRoutes);
 app.use('/shipments', shipmentRoutes);
 app.use("/chats" ,chatbotRoutes);
 app.use('/cart', cartRoutes);
+app.use("/ai", aiRoutes);
+
 
 
 
