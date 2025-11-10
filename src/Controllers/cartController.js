@@ -74,7 +74,7 @@ export const addToCart = async (req, res) => {
 
       if (existingItem) {
         // 🆙 Increase quantity
-        existingItem.quantity += qty;
+        existingItem.quantity = qty;
       } else {
         // ➕ Add new product to cart
         cart.items.push({ product: productId, quantity: qty });

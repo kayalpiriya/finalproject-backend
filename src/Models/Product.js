@@ -29,6 +29,10 @@ const productSchema = new mongoose.Schema({
     required: true, 
     default: 0  // 🔹 default means initially no stock
   },
+  img: {       // ✅ Add this for product image
+    type: String,
+    default: "" // you can set a default placeholder image if you want
+  },
   createdAt: { 
     type: Date, 
     default: Date.now 
