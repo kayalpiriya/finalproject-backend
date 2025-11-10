@@ -15,7 +15,7 @@ export const getAIResponse = async (req, res) => {
 
     // Call OpenAI API
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
+      model: "gpt-4o-mini",
       messages: [
         { role: "system", content: "You are a helpful assistant for a bakery website." },
         { role: "user", content: message }

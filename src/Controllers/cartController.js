@@ -49,45 +49,60 @@ import Product from "../Models/Product.js";
 export const addToCart = async (req, res) => {
   try {
     const { productId, quantity } = req.body;
-    const userId = req.user.id; // from verifyToken middleware
+    const userId = req.user.id;
+    const qty = Number(quantity) || 1;
 
-    const qty = Number(quantity) || 1; // 🧠 fix here
-
-    let cart = await Cart.findOne({ user: userId });
-
-    if (!cart) {
-      cart = new Cart({ user: userId, items: [], totalPrice: 0 });
-    }
-
-    const existingItem = cart.items.find(
-      (item) => item.product.toString() === productId
-    );
-
+    // 🧩 Step 1: Check product existence
     const product = await Product.findById(productId);
     if (!product) return res.status(404).json({ message: "Product not found" });
 
-    if (existingItem) {
-      existingItem.quantity += qty;
+    // 🧩 Step 2: Find existing cart
+    let cart = await Cart.findOne({ user: userId });
+
+    if (!cart) {
+      // 🚀 New cart
+      cart = new Cart({
+        user: userId,
+        items: [{ product: productId, quantity: qty }],
+        totalPrice: product.price * qty,
+      });
     } else {
-      cart.items.push({ product: productId, quantity: qty });
+      // 🧠 Check if product already exists
+      const existingItem = cart.items.find(
+        (item) => item.product.toString() === productId
+      );
+
+      if (existingItem) {
+        // 🆙 Increase quantity
+        existingItem.quantity += qty;
+      } else {
+        // ➕ Add new product to cart
+        cart.items.push({ product: productId, quantity: qty });
+      }
+
+      // 🧮 Recalculate total properly (so it’s always accurate)
+      let total = 0;
+      for (const item of cart.items) {
+        const prod = await Product.findById(item.product);
+        if (prod) total += prod.price * item.quantity;
+      }
+      cart.totalPrice = total;
     }
 
-    // ✅ Calculate total properly
-    let total = 0;
-    for (const item of cart.items) {
-      const prod = await Product.findById(item.product);
-      if (prod) total += prod.price * item.quantity;
-    }
-    cart.totalPrice = total;
-
+    // 🕒 Update timestamp
     cart.updatedAt = Date.now();
-    await cart.save();
 
-    res.status(200).json(cart);
+    // 💾 Save and populate
+    await cart.save();
+    const populated = await cart.populate("items.product");
+
+    res.status(200).json(populated);
   } catch (err) {
+    console.error("Add to Cart Error:", err);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 
 // 🧾 Get user’s own cart
