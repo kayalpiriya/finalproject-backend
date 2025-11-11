@@ -17,11 +17,15 @@ import userRoutes from "./Routes/userRoutes.js";
 import reviewRoutes from "./Routes/reviewRoutes.js";
 import shipmentRoutes from './Routes/shipmentRoutes.js';
 import chatbotRoutes from "./Routes/chatRoutes.js";
-
+import profileRoutes from './Routes/profileRoutes.js';
 dotenv.config();
 const app = express();
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true
+}));
+
 app.use(express.json());
 
 
@@ -45,7 +49,7 @@ app.use('/shipments', shipmentRoutes);
 app.use("/chats" ,chatbotRoutes);
 app.use('/cart', cartRoutes);
 app.use("/ai", aiRoutes);
-
+app.use("/profile",profileRoutes),
 
 
 
