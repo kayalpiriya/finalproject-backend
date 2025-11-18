@@ -1,5 +1,5 @@
 import express from 'express';
-import { registerUser, loginUser, forgotPassword, resetPasswordWithOtp,} from '../Controllers/authController.js';
+import { registerUser, loginUser, forgotPassword, resetPasswordWithOtp, logoutUser} from '../Controllers/authController.js';
 import passport from "../Controllers/googleAuth.js"; // import the configured passport
 import jwt from "jsonwebtoken";
 
@@ -11,6 +11,7 @@ router.post('/login', loginUser);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPasswordWithOtp);
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+router.post("/logout", logoutUser);
 
 router.get(
   "/google/callback",

@@ -120,3 +120,12 @@ if (user.otpExpiry < Date.now()) {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const logoutUser = async (req, res) => {
+  try {
+    // Frontend will simply delete token
+    res.status(200).json({ message: "Logged out successfully" });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
