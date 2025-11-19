@@ -7,6 +7,7 @@ import session from "express-session";
 import passport from "passport";
 import "./Controllers/googleAuth.js"; // import the strategy
 import aiRoutes from "./Routes/aiRoutes.js";
+import adminRoutes from "./Routes/adminRoutes.js";
 
 
 import authRoutes from './Routes/authRoutes.js';
@@ -50,6 +51,7 @@ app.use("/chats" ,chatbotRoutes);
 app.use('/cart', cartRoutes);
 app.use("/ai", aiRoutes);
 app.use("/profile",profileRoutes),
+app.use("/admin", adminRoutes);
 
 
 
