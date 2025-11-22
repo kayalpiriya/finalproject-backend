@@ -6,7 +6,7 @@ import cors from 'cors';
 import session from "express-session";
 import passport from "passport";
 import "./Controllers/googleAuth.js"; // import the strategy
-import aiRoutes from "./Routes/aiRoutes.js";
+// import aiRoutes from "./Routes/aiRoutes.js";
 import adminRoutes from "./Routes/adminRoutes.js";
 
 
@@ -17,7 +17,7 @@ import paymentRoutes from './Routes/paymentRoutes.js';
 import userRoutes from "./Routes/userRoutes.js";
 import reviewRoutes from "./Routes/reviewRoutes.js";
 import shipmentRoutes from './Routes/shipmentRoutes.js';
-import chatbotRoutes from "./Routes/chatRoutes.js";
+import chatRoutes from "./Routes/chatRoutes.js";
 import profileRoutes from './Routes/profileRoutes.js';
 dotenv.config();
 const app = express();
@@ -47,9 +47,9 @@ app.use('/orders', orderRoutes);
 app.use('/payments', paymentRoutes); 
 app.use("/reviews", reviewRoutes);
 app.use('/shipments', shipmentRoutes);
-app.use("/chats" ,chatbotRoutes);
+app.use("/chats" ,chatRoutes);
 app.use('/cart', cartRoutes);
-app.use("/ai", aiRoutes);
+// app.use("/ai", aiRoutes);
 app.use("/profile",profileRoutes),
 app.use("/admin", adminRoutes);
 

@@ -1,8 +1,8 @@
-import express from "express";
-import { getAIResponse } from "../Controllers/aiController.js";
+// import express from "express";
+// import { getAIResponse } from "../Controllers/aiController.js";
 
-const router = express.Router();
+// const router = express.Router();
 
-router.post("/", getAIResponse);
+// router.post("/", getAIResponse);
 
-export default router;
+// export default router;
