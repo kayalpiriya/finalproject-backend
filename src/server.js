@@ -102,7 +102,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:5173', // change if frontend origin differs
+  origin: 'http://localhost:5174', // change if frontend origin differs
   credentials: true
 }));
 
@@ -132,7 +132,7 @@ app.use('/shipments', shipmentRoutes);
 app.use('/cart', cartRoutes);
 app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
-app.use("/api/chats", chatRoutes);
+app.use("/chats", chatRoutes);
 app.use("/api/blogs", blogRoutes);
 
 
