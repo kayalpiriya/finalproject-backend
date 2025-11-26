@@ -87,8 +87,9 @@ import reviewRoutes from "./Routes/reviewRoutes.js";
 import shipmentRoutes from './Routes/shipmentRoutes.js';
 import profileRoutes from './Routes/profileRoutes.js';
 import adminRoutes from "./Routes/adminRoutes.js";
-import chatRoutes from "./Routes/chatRoutes.js";
+// import chatRoutes from "./Routes/chatRoutes.js";
 import blogRoutes from "./Routes/blogRoutes.js";
+import aiRoutes from "./Routes/aiRoutes.js"
 
 
 // NEW: chat & ai routes
@@ -102,7 +103,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:5174', // change if frontend origin differs
+  origin: 'http://localhost:5173', // change if frontend origin differs
   credentials: true
 }));
 
@@ -132,8 +133,9 @@ app.use('/shipments', shipmentRoutes);
 app.use('/cart', cartRoutes);
 app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
-app.use("/chats", chatRoutes);
+// app.use("/chats", chatRoutes);
 app.use("/api/blogs", blogRoutes);
+app.use("/ai", aiRoutes); 
 
 
 
