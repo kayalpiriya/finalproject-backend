@@ -103,7 +103,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:5174', // change if frontend origin differs
+  origin: 'http://localhost:5173', // change if frontend origin differs
   credentials: true
 }));
 
