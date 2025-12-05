@@ -7,7 +7,14 @@ import { generateInvoice } from "../Utils/generateInvoice.js";
 dotenv.config();
 
 // ✅ Initialize Stripe with your secret key
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// -------- FIX: Stripe Safe Init ----------
+if (!process.env.STRIPE_SECRET_KEY) {
+  console.error("❌ STRIPE_SECRET_KEY missing in cloud environment!");
+}
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_dummy");
+
 
 // export const createPayment = async (req, res) => {
 //   try {

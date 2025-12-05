@@ -96,6 +96,11 @@ import aiRoutes from "./Routes/aiRoutes.js"
 // import chatRoutes from "./Routes/chatRoutes.js";
 // import aiRoutes from "./Routes/aiRoutes.js";
 
+
+// ✅ Add this line RIGHT HERE
+console.log("Loaded Stripe Key:", process.env.STRIPE_SECRET_KEY ? "OK" : "MISSING");
+
+
 // other controllers/strategies
 import "./Controllers/googleAuth.js"; // if you have this
 
