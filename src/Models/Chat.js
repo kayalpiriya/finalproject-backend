@@ -77,17 +77,32 @@
 // export default Chat;
 
 
+// import mongoose from "mongoose";
+
+// const chatSchema = new mongoose.Schema(
+//   {
+//     user: { type: String, required: true }, // user id, email, or name
+//     message: { type: String, required: true },
+//     role: { type: String, enum: ["user", "ai"], required: true },
+//     metadata: { type: Object, default: {} } // optional raw AI data
+//   },
+//   { timestamps: true }
+// );
+
+// const Chat = mongoose.model("Chat", chatSchema);
+// export default Chat;
+
+
+
 import mongoose from "mongoose";
 
 const chatSchema = new mongoose.Schema(
   {
-    user: { type: String, required: true }, // user id, email, or name
+    user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     message: { type: String, required: true },
-    role: { type: String, enum: ["user", "ai"], required: true },
-    metadata: { type: Object, default: {} } // optional raw AI data
+    response: { type: String },
   },
   { timestamps: true }
 );
 
-const Chat = mongoose.model("Chat", chatSchema);
-export default Chat;
+export default mongoose.model("Chat", chatSchema);

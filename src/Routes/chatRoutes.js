@@ -102,48 +102,69 @@
 
 // export default router;
 
+// import express from "express";
+// import Chat from "../Models/Chat.js"; // Ensure capitalization matches your file
+
+// const router = express.Router();
+
+// // 1. GET ALL CHATS (For Admin Dashboard)
+// router.get("/", async (req, res) => {
+//   try {
+//     // Sort by newest first
+//     const chats = await Chat.find().sort({ createdAt: -1 });
+//     res.status(200).json(chats);
+//   } catch (err) {
+//     res.status(500).json({ message: "Failed to load chats", error: err.message });
+//   }
+// });
+
+// // 2. SAVE NEW CHAT (Used by Chatbot)
+// router.post("/", async (req, res) => {
+//   try {
+//     const { user, role, message } = req.body;
+    
+//     if (!user || !role || !message) {
+//       return res.status(400).json({ message: "Missing fields" });
+//     }
+
+//     const chat = new Chat({ user, role, message });
+//     await chat.save();
+    
+//     res.status(201).json(chat);
+//   } catch (err) {
+//     res.status(500).json({ message: "Failed to save chat", error: err.message });
+//   }
+// });
+
+// // 3. DELETE CHAT (For Admin Dashboard)
+// router.delete("/:id", async (req, res) => {
+//   try {
+//     await Chat.findByIdAndDelete(req.params.id);
+//     res.status(200).json({ message: "Chat deleted" });
+//   } catch (err) {
+//     res.status(500).json({ message: "Failed to delete chat", error: err.message });
+//   }
+// });
+
+// export default router;
+
+
+
+
+
+// backend/Routes/chatRoutes.js
 import express from "express";
-import Chat from "../Models/Chat.js"; // Ensure capitalization matches your file
+import { sendMessage, getChatHistory, getAllChats, deleteChatAdmin } from "../Controllers/chatController.js";
+import { verifyToken } from "../Middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// 1. GET ALL CHATS (For Admin Dashboard)
-router.get("/", async (req, res) => {
-  try {
-    // Sort by newest first
-    const chats = await Chat.find().sort({ createdAt: -1 });
-    res.status(200).json(chats);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to load chats", error: err.message });
-  }
-});
+// USER ROUTES
+router.post("/send", verifyToken, sendMessage);
+router.get("/history", verifyToken, getChatHistory);
 
-// 2. SAVE NEW CHAT (Used by Chatbot)
-router.post("/", async (req, res) => {
-  try {
-    const { user, role, message } = req.body;
-    
-    if (!user || !role || !message) {
-      return res.status(400).json({ message: "Missing fields" });
-    }
-
-    const chat = new Chat({ user, role, message });
-    await chat.save();
-    
-    res.status(201).json(chat);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to save chat", error: err.message });
-  }
-});
-
-// 3. DELETE CHAT (For Admin Dashboard)
-router.delete("/:id", async (req, res) => {
-  try {
-    await Chat.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Chat deleted" });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to delete chat", error: err.message });
-  }
-});
+// ADMIN ROUTES (no verifyAdmin)
+router.get("/all", verifyToken, getAllChats);
+router.delete("/delete/:id", verifyToken, deleteChatAdmin);
 
 export default router;

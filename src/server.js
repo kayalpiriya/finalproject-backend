@@ -89,12 +89,8 @@ import profileRoutes from './Routes/profileRoutes.js';
 import adminRoutes from "./Routes/adminRoutes.js";
 import chatRoutes from "./Routes/chatRoutes.js";
 import blogRoutes from "./Routes/blogRoutes.js";
-import aiRoutes from "./Routes/aiRoutes.js"
 
 
-// NEW: chat & ai routes
-// import chatRoutes from "./Routes/chatRoutes.js";
-// import aiRoutes from "./Routes/aiRoutes.js";
 
 
 // ✅ Add this line RIGHT HERE
@@ -140,13 +136,8 @@ app.use("/profile", profileRoutes);
 app.use("/admin", adminRoutes);
 app.use("/chats", chatRoutes);
 app.use("/api/blogs", blogRoutes);
-app.use("/ai", aiRoutes); 
 
 
-
-// NEW: Chat & AI routes
-// app.use("/chats", chatRoutes);      // GET /chats, POST /chats
-// app.use("/ai", aiRoutes);          // POST /ai/generate
 
 // Root
 app.get('/', (req, res) => res.send("Bakery backend running 🍰"));
