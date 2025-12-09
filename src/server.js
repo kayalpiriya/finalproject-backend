@@ -104,7 +104,7 @@ dotenv.config();
 const app = express();
 
 app.use(cors({
-  origin: 'http://localhost:5173', // change if frontend origin differs
+  origin: 'https://vercel.com/kayalpiriyas-projects/finalproject-frontend/EETuVB3qouJZ8yMeNWyooZhbtm8v', // change if frontend origin differs
   credentials: true
 }));
 
