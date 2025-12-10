@@ -103,10 +103,21 @@ import "./Controllers/googleAuth.js"; // if you have this
 dotenv.config();
 const app = express();
 
+// app.use(cors({
+//   origin: 'https://finalproject-frontend-om9jm7iv9-kayalpiriyas-projects.vercel.app',     "https://finalproject-frontend-ues3.vercel.app"
+//   // change if frontend origin differs
+//   credentials: true
+// }));
+
 app.use(cors({
-  origin: 'https://finalproject-frontend-om9jm7iv9-kayalpiriyas-projects.vercel.app', // change if frontend origin differs
+  origin: [
+    "https://finalproject-frontend-om9jm7iv9-kayalpiriyas-projects.vercel.app",
+    "https://finalproject-frontend-ues3.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE"],
   credentials: true
 }));
+
 
 app.use(express.json());
 
