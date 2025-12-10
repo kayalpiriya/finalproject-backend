@@ -112,9 +112,11 @@ const app = express();
 app.use(cors({
   origin: [
     "https://finalproject-frontend-om9jm7iv9-kayalpiriyas-projects.vercel.app",
-    "https://finalproject-frontend-ues3.vercel.app"
+    "https://finalproject-frontend-ues3.vercel.app",
+    "https://finalproject-frontend-ues3-git-main-kayalpiriyas-projects.vercel.app"
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true
 }));
 
