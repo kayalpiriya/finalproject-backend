@@ -118,8 +118,8 @@ export const createPayment = async (req, res) => {
         },
       ],
       mode: "payment",
-      success_url: "http://localhost:5173/payment-success?session_id={CHECKOUT_SESSION_ID}",
-      cancel_url: "http://localhost:5173/payment-cancel",
+      success_url: "https://finalproject-backend-7rqa.onrender.com/payment-success?session_id={CHECKOUT_SESSION_ID}",
+      cancel_url: "https://finalproject-backend-7rqa.onrender.com/payment-cancel",
     });
 
     // ✅ Save Payment in DB with user reference
