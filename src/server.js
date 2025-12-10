@@ -109,16 +109,18 @@ const app = express();
 //   credentials: true
 // }));
 
-app.use(cors({
-  origin: [
-    "https://finalproject-frontend-om9jm7iv9-kayalpiriyas-projects.vercel.app",
-    "https://finalproject-frontend-ues3.vercel.app",
-    "https://finalproject-frontend-ues3-git-main-kayalpiriyas-projects.vercel.app"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "https://finalproject-frontend-ues3-git-main-kayalpiriyas-projects.vercel.app",
+      "https://finalproject-frontend-ues3.vercel.app",
+      "https://finalproject-frontend-om9jm7iv9-kayalpiriyas-projects.vercel.app"
+    ],
+    methods: "GET,POST,PUT,DELETE",
+    credentials: true,
+  })
+);
+
 
 
 app.use(express.json());
