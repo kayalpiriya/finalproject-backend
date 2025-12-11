@@ -256,7 +256,7 @@ export const createPayment = async (req, res) => {
       line_items: [
         {
           price_data: {
-            currency: "lkr",               // 👈 CHANGED ONLY THIS
+            currency: "inr",               // 👈 CHANGED ONLY THIS
             product_data: { name: "Order " + orderId },
             unit_amount: Math.round(amount * 100), // keep same
           },
