@@ -85,56 +85,83 @@ export const loginUser = async (req, res) => {
 //     res.status(500).json({ message: err.message });
 //   }
 // };
-// ✅ Forgot Password (Send OTP) - Render Optimized
+// ✅ Forgot Password (Debug Mode with Connection Verify)
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
     console.log("🔹 Request received for:", email);
 
-    // 1. User check
-    const user = await User.findOne({ email });
-    if (!user) {
-        return res.status(400).json({ message: "User not found" });
+    // 1. Env Check
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+        return res.status(500).json({ 
+            message: "Configuration Error", 
+            error: "EMAIL_USER or EMAIL_PASS is missing in Render Environment Variables" 
+        });
     }
 
-    // 2. Debugging: Check if Env Vars exist (Don't log the actual password!)
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.error("❌ ERROR: Email credentials missing in Render Environment!");
-        return res.status(500).json({ message: "Server Config Error: Missing Credentials" });
+    // 2. User Check
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(404).json({ message: "User not found" });
     }
 
     // 3. Generate OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
     user.otp = otp;
-    user.otpExpiry = Date.now() + 10 * 60 * 1000;
+    user.otpExpiry = Date.now() + 10 * 60 * 1000; // 10 min
     await user.save();
 
-    // 4. Nodemailer Config (Use Port 465 for Render)
+    // 4. Nodemailer Config
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465,       // SSL Port
-      secure: true,    // True for 465
+      port: 465,
+      secure: true, // true for 465
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
     });
 
-    // 5. Send Mail
+    // 5. 🔥 VERIFY CONNECTION (New Step)
+    // இது மெயில் அனுப்பும் முன் Connection சரியா என்று பார்க்கும்
+    try {
+        await transporter.verify();
+        console.log("✅ SMTP Connection Successful");
+    } catch (connError) {
+        console.error("❌ SMTP Connection Failed:", connError);
+        return res.status(500).json({ 
+            message: "Failed to connect to Gmail", 
+            error: connError.message,
+            hint: "Check App Password or Render Env Variables"
+        });
+    }
+
+    // 6. Send Email
     await transporter.sendMail({
       from: `"Bakery App" <${process.env.EMAIL_USER}>`,
       to: user.email,
       subject: "Password Reset OTP",
-      html: `<h2>Your OTP is: ${otp}</h2>`,
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #E76F51;">Password Reset</h2>
+          <p>Hello ${user.name},</p>
+          <p>Your OTP for password reset is:</p>
+          <h1 style="color: #264653; letter-spacing: 5px;">${otp}</h1>
+          <p>This OTP is valid for 10 minutes.</p>
+        </div>
+      `,
     });
 
-    console.log("✅ Email sent successfully to:", email);
+    console.log("✅ Email sent successfully");
     res.status(200).json({ message: "OTP sent to your email" });
 
   } catch (err) {
-    // 🔥 INTHA LOG-AI RENDER DASHBOARD-IL PAARUNGA
-    console.error("❌ NODEMAILER ERROR:", err); 
-    res.status(500).json({ message: "Email failed to send. Check server logs." });
+    console.error("🔥 SYSTEM ERROR:", err);
+    // Error விபரங்களை Frontend-க்கு அனுப்புகிறோம்
+    res.status(500).json({ 
+        message: "Internal Server Error", 
+        error: err.message 
+    });
   }
 };
 
