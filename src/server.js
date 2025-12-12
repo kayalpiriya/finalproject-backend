@@ -112,6 +112,8 @@ const app = express();
 app.use(
   cors({
     origin: [
+      "https://finalproject-frontend-inky.vercel.app", // ← YOUR REAL FRONTEND
+
       "https://finalproject-frontend-ues3-git-main-kayalpiriyas-projects.vercel.app",
       "https://finalproject-frontend-ues3.vercel.app",
       "https://finalproject-frontend-om9jm7iv9-kayalpiriyas-projects.vercel.app"
