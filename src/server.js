@@ -189,6 +189,11 @@ import adminRoutes from "./Routes/adminRoutes.js";
 import chatRoutes from "./Routes/chatRoutes.js";
 import blogRoutes from "./Routes/blogRoutes.js";
 
+
+// ✅ Add this line RIGHT HERE
+console.log("Loaded Stripe Key:", process.env.STRIPE_SECRET_KEY ? "OK" : "MISSING");
+
+
 // Import the Webhook Controller specifically here
 import { handleStripeWebhook } from './Controllers/paymentController.js'; 
 

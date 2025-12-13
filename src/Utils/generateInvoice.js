@@ -84,47 +84,38 @@ import path from "path";
 export const generateInvoice = (order, payment) => {
   return new Promise((resolve, reject) => {
     try {
-      // 1. Setup Document
       const doc = new PDFDocument({ size: "A4", margin: 50 });
-      
-      // Use absolute path to ensure folder is found
       const invoiceDir = path.resolve("invoices");
-      const invoiceName = `invoice-${order._id}.pdf`;
-      const invoicePath = path.join(invoiceDir, invoiceName);
-
-      // Create folder if it doesn't exist
+      
+      // Ensure folder exists
       if (!fs.existsSync(invoiceDir)) {
         fs.mkdirSync(invoiceDir, { recursive: true });
       }
 
-      // 2. Setup Write Stream (The File Saver)
+      const invoiceName = `invoice-${order._id}.pdf`;
+      const invoicePath = path.join(invoiceDir, invoiceName);
       const writeStream = fs.createWriteStream(invoicePath);
+
       doc.pipe(writeStream);
 
-      // ---------------- Header ----------------
-      doc
-        .fillColor("#f472b6") // pink/muffin theme
-        .fontSize(26)
-        .text("🍰 My Bakery Invoice", { align: "center" });
+      // --- PDF CONTENT ---
+      doc.fillColor("#f472b6").fontSize(26).text("🍰 My Bakery Invoice", { align: "center" });
       doc.moveDown();
 
       doc.fillColor("black").fontSize(12);
-      doc.text(`Invoice #: ${order._id}`, { align: "left" });
-      doc.text(`Order ID: ${order._id}`);
+      doc.text(`Invoice #: ${order._id}`);
       doc.text(`Date: ${new Date().toLocaleDateString()}`);
-      doc.moveDown();
-
-      // Customer Info - Safety checks added
+      
+      // Handle Customer Name/Email safely
       const customerName = order.user?.username || order.customerName || "Customer";
       const customerEmail = order.user?.email || order.customerEmail || "N/A";
-
-      doc.text(`Customer Name: ${customerName}`);
+      
+      doc.text(`Customer: ${customerName}`);
       doc.text(`Email: ${customerEmail}`);
       doc.moveDown();
 
-      // ---------------- Items Table ----------------
+      // Table Header
       doc.font("Helvetica-Bold");
-      // Header Row
       doc.text("Item", 50, doc.y, { continued: true });
       doc.text("Qty", 250, doc.y, { continued: true });
       doc.text("Price", 350, doc.y, { continued: true });
@@ -132,59 +123,37 @@ export const generateInvoice = (order, payment) => {
       doc.moveDown();
       doc.font("Helvetica");
 
-      // Items Loop
-      if (order.items && order.items.length > 0) {
+      // Items
+      if (order.items) {
         order.items.forEach((item) => {
-          // Handle cases where item might be populated or raw object
-          const itemName = item.name || item.product?.name || "Product"; 
-          const itemPrice = item.price || 0;
-          const itemQty = item.quantity || 1;
-          const itemTotal = itemPrice * itemQty;
-
-          doc.text(itemName, 50, doc.y, { continued: true });
-          doc.text(itemQty.toString(), 250, doc.y, { continued: true });
-          doc.text(`Rs. ${itemPrice}`, 350, doc.y, { continued: true }); // Changed ₹ to Rs.
-          doc.text(`Rs. ${itemTotal}`, 450, doc.y);
+          const name = item.name || item.product?.name || "Item";
+          const price = item.price || 0;
+          const qty = item.quantity || 1;
+          
+          doc.text(name, 50, doc.y, { continued: true });
+          doc.text(qty.toString(), 250, doc.y, { continued: true });
+          doc.text(`Rs. ${price}`, 350, doc.y, { continued: true });
+          doc.text(`Rs. ${price * qty}`, 450, doc.y);
           doc.moveDown();
         });
       }
 
-      // Total
       doc.moveDown();
-      doc
-        .font("Helvetica-Bold")
-        .fillColor("#f472b6")
-        .text(`Total: Rs. ${order.totalAmount || order.total}`, { align: "right" }); // Changed ₹ to Rs.
+      doc.font("Helvetica-Bold").text(`Total Paid: Rs. ${payment.amount}`, { align: "right" });
+      doc.font("Helvetica").text(`Status: ${payment.status.toUpperCase()}`, { align: "right" });
 
-      doc.moveDown();
-      doc.fillColor("black").font("Helvetica");
-      doc.text(`Payment Method: ${payment.method}`);
-      doc.text(`Payment Status: ${payment.status.toUpperCase()}`);
-      doc.moveDown(2);
-
-      // Footer
-      doc
-        .fontSize(10)
-        .fillColor("gray")
-        .text("Thank you for choosing My Bakery! 🍰", { align: "center" });
-
-      // 3. Finalize PDF
       doc.end();
 
-      // ---------------- CRITICAL FIX ----------------
-      // We must wait for the 'finish' event before resolving.
-      // This ensures the file is fully saved on disk.
+      // --- WAIT FOR FINISH ---
       writeStream.on("finish", () => {
         resolve(invoicePath);
       });
 
       writeStream.on("error", (err) => {
-        console.error("Error writing PDF stream:", err);
         reject(err);
       });
 
     } catch (err) {
-      console.error("Error generating invoice:", err);
       reject(err);
     }
   });
