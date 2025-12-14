@@ -3,30 +3,20 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-// ✅ Create transporter (FIXED)
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
   port: 587,
-  secure: false, // TLS
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
 });
 
-// ✅ Verify transporter at startup
-transporter.verify((error, success) => {
-  if (error) {
-    console.error("❌ Email transporter error:", error);
-  } else {
-    console.log("✅ Email transporter is ready");
-  }
-});
-
-export const sendInvoiceEmail = async (userEmail, order, invoicePath) => {
+export const sendInvoiceEmail = async (userEmail, order, invoiceBuffer) => {
   try {
     if (!userEmail) {
-      console.log("⚠️ No email provided, skipping email send.");
+      console.log("⚠️ No email found, skipping send.");
       return false;
     }
 
@@ -45,17 +35,18 @@ export const sendInvoiceEmail = async (userEmail, order, invoicePath) => {
       attachments: [
         {
           filename: `Invoice-${order._id}.pdf`,
-          path: invoicePath,
+          content: invoiceBuffer,
+          contentType: "application/pdf",
         },
       ],
     };
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log("📧 Email sent:", info.messageId);
+    await transporter.sendMail(mailOptions);
+    console.log("📧 Invoice email sent to:", userEmail);
     return true;
 
   } catch (error) {
-    console.error("❌ Email send failed:", error);
+    console.error("❌ Email sending failed:", error);
     return false;
   }
 };

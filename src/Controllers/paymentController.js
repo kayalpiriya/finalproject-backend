@@ -49,59 +49,52 @@ export const createPayment = async (req, res) => {
   }
 };
 
-// WEBHOOK HANDLER
+// STRIPE WEBHOOK
 export const handleStripeWebhook = async (req, res) => {
-  const sig = req.headers['stripe-signature'];
+  const sig = req.headers["stripe-signature"];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
   let event;
 
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
-    console.error("❌ Stripe webhook signature error:", err.message);
-    return res.status(400).send(`Webhook Error`);
+    console.error("❌ Webhook signature error:", err.message);
+    return res.status(400).send("Webhook Error");
   }
 
-  if (event.type === 'checkout.session.completed') {
+  if (event.type === "checkout.session.completed") {
     const session = event.data.object;
 
     try {
       const payment = await Payment.findOne({ stripePaymentId: session.id })
         .populate({
           path: "order",
-          populate: { path: "user" }
+          populate: { path: "user" },
         });
 
-      if (!payment) {
-        console.log("⚠️ Payment not found for session:", session.id);
-        return res.send();
-      }
+      if (!payment) return res.json({ received: true });
 
       payment.status = "completed";
       await payment.save();
       await Order.findByIdAndUpdate(payment.order._id, { status: "Processing" });
 
-      // Generate Invoice
-      const invoicePath = await generateInvoice(payment.order, payment);
+      // ✅ Generate PDF buffer (NO FILE SYSTEM)
+      const invoiceBuffer = await generateInvoice(payment.order, payment);
 
-      // Get email safely
       const customerEmail =
         payment.order.user?.email || payment.order.customerEmail;
 
-      console.log("📧 Sending invoice to:", customerEmail);
-
-      if (customerEmail) {
-        await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
-      }
+      // ✅ Send email automatically
+      await sendInvoiceEmail(customerEmail, payment.order, invoiceBuffer);
 
     } catch (err) {
       console.error("❌ Webhook processing error:", err);
     }
   }
 
-  // ⚠️ MUST always return 200 to Stripe
   res.json({ received: true });
 };
+
 
 
 // 3. MANUAL CONFIRM (Fallback)
