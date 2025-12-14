@@ -3,44 +3,59 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// ✅ Create transporter (FIXED)
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // TLS
   auth: {
-    user: process.env.EMAIL_USER, // Your Gmail
-    pass: process.env.EMAIL_PASS, // Your App Password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
+});
+
+// ✅ Verify transporter at startup
+transporter.verify((error, success) => {
+  if (error) {
+    console.error("❌ Email transporter error:", error);
+  } else {
+    console.log("✅ Email transporter is ready");
+  }
 });
 
 export const sendInvoiceEmail = async (userEmail, order, invoicePath) => {
   try {
+    if (!userEmail) {
+      console.log("⚠️ No email provided, skipping email send.");
+      return false;
+    }
+
     const mailOptions = {
-      from: `"My Bakery Team 🍰" <${process.env.EMAIL_USER}>`,
+      from: `"My Bakery 🍰" <${process.env.EMAIL_USER}>`,
       to: userEmail,
-      subject: `Order Confirmation & Invoice - Order #${order._id}`,
+      subject: `Invoice for Order #${order._id}`,
       html: `
-        <div style="font-family: Arial, sans-serif; color: #333;">
-          <h1 style="color: #d63384;">Thank you for your order! 🧁</h1>
-          <p>Hi there,</p>
-          <p>We have received your payment for <b>Order #${order._id}</b>.</p>
-          <p>Your invoice is attached to this email.</p>
-          <br/>
-          <p>If you have any questions, reply to this email.</p>
-          <p>Regards,<br/><b>My Bakery Team</b></p>
-        </div>
+        <h2>Thank you for your order! 🧁</h2>
+        <p>Your payment was successful.</p>
+        <p><b>Order ID:</b> ${order._id}</p>
+        <p>Your invoice is attached.</p>
+        <br/>
+        <p>— My Bakery Team</p>
       `,
       attachments: [
         {
           filename: `Invoice-${order._id}.pdf`,
-          path: invoicePath, // Auto-attaches the file we generated
+          path: invoicePath,
         },
       ],
     };
 
     const info = await transporter.sendMail(mailOptions);
-    console.log(`📧 Email sent successfully to ${userEmail}: ${info.response}`);
+    console.log("📧 Email sent:", info.messageId);
     return true;
+
   } catch (error) {
-    console.error("❌ Error sending email:", error);
+    console.error("❌ Email send failed:", error);
     return false;
   }
 };
