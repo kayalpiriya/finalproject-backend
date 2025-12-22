@@ -556,12 +556,183 @@
 // };
 
 
+// import Stripe from 'stripe';
+// import dotenv from 'dotenv';
+// import Payment from '../Models/Payment.js';
+// import Order from '../Models/Order.js';
+// import { generateInvoice } from "../Utils/generateInvoice.js";
+// import { sendInvoiceEmail } from "../Utils/sendEmail.js"; // Import Email function
+// import fs from 'fs';
+// import path from 'path';
+
+// dotenv.config();
+
+// const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+// // 1. CREATE PAYMENT SESSION
+// export const createPayment = async (req, res) => {
+//   try {
+//     const { orderId, amount } = req.body;
+//     const order = await Order.findById(orderId);
+//     if (!order) return res.status(404).json({ message: "Order not found" });
+
+//     const session = await stripe.checkout.sessions.create({
+//       payment_method_types: ["card"],
+//       line_items: [{
+//         price_data: {
+//           currency: "inr",
+//           product_data: { name: "Order #" + orderId },
+//           unit_amount: Math.round(amount * 100),
+//         },
+//         quantity: 1,
+//       }],
+//       mode: "payment",
+//       success_url: "https://finalproject-frontend-ues3.vercel.app/payment-success?session_id={CHECKOUT_SESSION_ID}",
+//       cancel_url: "https://finalproject-frontend-ues3.vercel.app/payment-cancel",
+//     });
+
+//     const payment = new Payment({
+//       order: orderId,
+//       user: req.user.id,
+//       amount,
+//       method: "card",
+//       status: "pending",
+//       stripePaymentId: session.id,
+//     });
+
+//     await payment.save();
+//     res.status(201).json({ url: session.url });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+// // 2. WEBHOOK HANDLER (Auto Confirm + Invoice + Email)
+// export const handleStripeWebhook = async (req, res) => {
+//   const sig = req.headers['stripe-signature'];
+//   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+//   let event;
+
+//   try {
+//     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+//   } catch (err) {
+//     console.error(`Webhook Error: ${err.message}`);
+//     return res.status(400).send(`Webhook Error: ${err.message}`);
+//   }
+
+//   if (event.type === 'checkout.session.completed') {
+//     const session = event.data.object;
+//     try {
+//       // Find Payment & Populate User Details for Email
+//       const payment = await Payment.findOne({ stripePaymentId: session.id })
+//         .populate({
+//             path: 'order',
+//             populate: { path: 'user' } // Get User email
+//         });
+
+//       if (payment) {
+//         payment.status = "completed";
+//         await payment.save();
+//         await Order.findByIdAndUpdate(payment.order._id, { status: 'Processing' });
+
+//         console.log(`💰 Payment confirmed: ${session.id}`);
+
+//         // A. Generate Invoice
+//         const invoicePath = await generateInvoice(payment.order, payment);
+//         console.log("📄 Invoice generated.");
+
+//         // B. Send Email
+//         const customerEmail = payment.order.user?.email || payment.order.customerEmail;
+//         if (customerEmail) {
+//             await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
+//         } else {
+//             console.log("⚠️ No email found, skipping email send.");
+//         }
+//       }
+//     } catch (err) {
+//       console.error("Webhook Logic Error:", err);
+//     }
+//   }
+//   res.send();
+// };
+
+// // 3. MANUAL CONFIRM (Fallback)
+// export const confirmPayment = async (req, res) => {
+//   try {
+//     const { paymentId } = req.body;
+//     const payment = await Payment.findById(paymentId)
+//       .populate({ path: 'order', populate: { path: 'user' } });
+
+//     if (!payment) return res.status(404).json({ message: "Payment not found" });
+
+//     payment.status = "completed";
+//     await payment.save();
+
+//     // Generate & Email
+//     const invoicePath = await generateInvoice(payment.order, payment);
+//     const customerEmail = payment.order.user?.email;
+    
+//     if (customerEmail) {
+//         await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
+//     }
+
+//     res.status(200).json({ message: "Confirmed & Emailed", invoicePath });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+// // 4. DOWNLOAD INVOICE (Frontend)
+// export const getInvoice = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const payment = await Payment.findOne({ order: orderId }).populate("order");
+    
+//     if (!payment) return res.status(404).json({ message: "Payment not found" });
+
+//     const invoiceName = `invoice-${payment.order._id}.pdf`;
+//     const invoicePath = path.resolve("invoices", invoiceName);
+
+//     // If file missing, regenerate it
+//     if (!fs.existsSync(invoicePath)) {
+//         await generateInvoice(payment.order, payment);
+//     }
+
+//     res.download(invoicePath);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+// // 5. GET PAYMENTS (Admin)
+// export const getPayments = async (req, res) => {
+//   try {
+//     const payments = await Payment.find().populate('order');
+//     res.status(200).json(payments);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+// // 6. GET SESSION
+// export const getPaymentBySession = async (req, res) => {
+//   try {
+//     const { sessionId } = req.params;
+//     const payment = await Payment.findOne({ stripePaymentId: sessionId }).populate("order");
+//     if (!payment) return res.status(404).json({ message: "Payment not found" });
+//     res.status(200).json(payment.order);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
 import Stripe from 'stripe';
 import dotenv from 'dotenv';
 import Payment from '../Models/Payment.js';
 import Order from '../Models/Order.js';
 import { generateInvoice } from "../Utils/generateInvoice.js";
-import { sendInvoiceEmail } from "../Utils/sendEmail.js"; // Import Email function
+import { sendInvoiceEmail } from "../Utils/sendEmail.js"; 
 import fs from 'fs';
 import path from 'path';
 
@@ -580,9 +751,9 @@ export const createPayment = async (req, res) => {
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
-          currency: "inr",
+          currency: "lkr", // <--- CHANGED TO LKR
           product_data: { name: "Order #" + orderId },
-          unit_amount: Math.round(amount * 100),
+          unit_amount: Math.round(amount * 100), // LKR uses cents, so multiply by 100
         },
         quantity: 1,
       }],
@@ -607,7 +778,7 @@ export const createPayment = async (req, res) => {
   }
 };
 
-// 2. WEBHOOK HANDLER (Auto Confirm + Invoice + Email)
+// 2. WEBHOOK HANDLER
 export const handleStripeWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -623,11 +794,10 @@ export const handleStripeWebhook = async (req, res) => {
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     try {
-      // Find Payment & Populate User Details for Email
       const payment = await Payment.findOne({ stripePaymentId: session.id })
         .populate({
             path: 'order',
-            populate: { path: 'user' } // Get User email
+            populate: { path: 'user' } 
         });
 
       if (payment) {
@@ -637,16 +807,11 @@ export const handleStripeWebhook = async (req, res) => {
 
         console.log(`💰 Payment confirmed: ${session.id}`);
 
-        // A. Generate Invoice
         const invoicePath = await generateInvoice(payment.order, payment);
-        console.log("📄 Invoice generated.");
-
-        // B. Send Email
+        
         const customerEmail = payment.order.user?.email || payment.order.customerEmail;
         if (customerEmail) {
             await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
-        } else {
-            console.log("⚠️ No email found, skipping email send.");
         }
       }
     } catch (err) {
@@ -656,7 +821,7 @@ export const handleStripeWebhook = async (req, res) => {
   res.send();
 };
 
-// 3. MANUAL CONFIRM (Fallback)
+// 3. MANUAL CONFIRM
 export const confirmPayment = async (req, res) => {
   try {
     const { paymentId } = req.body;
@@ -668,7 +833,6 @@ export const confirmPayment = async (req, res) => {
     payment.status = "completed";
     await payment.save();
 
-    // Generate & Email
     const invoicePath = await generateInvoice(payment.order, payment);
     const customerEmail = payment.order.user?.email;
     
@@ -682,7 +846,7 @@ export const confirmPayment = async (req, res) => {
   }
 };
 
-// 4. DOWNLOAD INVOICE (Frontend)
+// 4. DOWNLOAD INVOICE
 export const getInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -693,7 +857,6 @@ export const getInvoice = async (req, res) => {
     const invoiceName = `invoice-${payment.order._id}.pdf`;
     const invoicePath = path.resolve("invoices", invoiceName);
 
-    // If file missing, regenerate it
     if (!fs.existsSync(invoicePath)) {
         await generateInvoice(payment.order, payment);
     }
@@ -704,7 +867,7 @@ export const getInvoice = async (req, res) => {
   }
 };
 
-// 5. GET PAYMENTS (Admin)
+// 5. GET PAYMENTS
 export const getPayments = async (req, res) => {
   try {
     const payments = await Payment.find().populate('order');
