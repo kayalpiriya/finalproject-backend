@@ -732,7 +732,7 @@ import dotenv from 'dotenv';
 import Payment from '../Models/Payment.js';
 import Order from '../Models/Order.js';
 import { generateInvoice } from "../Utils/generateInvoice.js";
-import { sendInvoiceEmail } from "../Utils/sendEmail.js"; 
+import { sendInvoiceEmail } from "../Utils/sendEmail.js";
 import fs from 'fs';
 import path from 'path';
 
@@ -740,28 +740,52 @@ dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// 1. CREATE PAYMENT SESSION
+// 1. CREATE PAYMENT SESSION (Updated for LKR & Debugging)
 export const createPayment = async (req, res) => {
+  console.log("⚡ Initiating Payment...");
+
   try {
     const { orderId, amount } = req.body;
+
+    // 1. Validate User Authentication
+    // If your authMiddleware didn't run or failed, req.user might be undefined
+    if (!req.user || !req.user.id) {
+      console.error("❌ Payment Error: User not found in request (Auth failed)");
+      return res.status(401).json({ message: "User not authenticated. Please log in again." });
+    }
+
+    // 2. Validate Order
     const order = await Order.findById(orderId);
-    if (!order) return res.status(404).json({ message: "Order not found" });
+    if (!order) {
+      console.error(`❌ Payment Error: Order ${orderId} not found`);
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // 3. Prepare Stripe Session
+    // Note: Stripe requires a minimum of approx $0.50 USD. 
+    // In LKR, ensure 'amount' is > 200 LKR to be safe.
+    const currency = "lkr";
+    const unitAmount = Math.round(amount * 100); // Convert to cents
+
+    console.log(`Checking out: Order ${orderId}, Amount: ${amount} ${currency.toUpperCase()}`);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
-          currency: "lkr", // <--- CHANGED TO LKR
-          product_data: { name: "Order #" + orderId },
-          unit_amount: Math.round(amount * 100), // LKR uses cents, so multiply by 100
+          currency: currency,
+          product_data: { name: `Order #${orderId}` },
+          unit_amount: unitAmount,
         },
         quantity: 1,
       }],
       mode: "payment",
+      // Ensure these URLs match your actual Frontend domain
       success_url: "https://finalproject-frontend-ues3.vercel.app/payment-success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://finalproject-frontend-ues3.vercel.app/payment-cancel",
     });
 
+    // 4. Save Pending Payment Record
     const payment = new Payment({
       order: orderId,
       user: req.user.id,
@@ -772,9 +796,17 @@ export const createPayment = async (req, res) => {
     });
 
     await payment.save();
+    console.log(`✅ Session Created: ${session.id}`);
+
     res.status(201).json({ url: session.url });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("❌ Create Payment Error:", err);
+    
+    // Send specific Stripe error if available (e.g., "Amount too small")
+    const errorMessage = err.raw ? err.raw.message : err.message;
+    
+    res.status(500).json({ message: errorMessage });
   }
 };
 
@@ -787,28 +819,33 @@ export const handleStripeWebhook = async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
-    console.error(`Webhook Error: ${err.message}`);
+    console.error(`Webhook Signature Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // Handle the event
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     try {
       const payment = await Payment.findOne({ stripePaymentId: session.id })
         .populate({
             path: 'order',
-            populate: { path: 'user' } 
+            populate: { path: 'user' }
         });
 
       if (payment) {
         payment.status = "completed";
         await payment.save();
+        
+        // Update Order Status
         await Order.findByIdAndUpdate(payment.order._id, { status: 'Processing' });
 
-        console.log(`💰 Payment confirmed: ${session.id}`);
+        console.log(`💰 Payment confirmed via Webhook: ${session.id}`);
 
+        // Generate Invoice
         const invoicePath = await generateInvoice(payment.order, payment);
         
+        // Send Email
         const customerEmail = payment.order.user?.email || payment.order.customerEmail;
         if (customerEmail) {
             await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
@@ -821,7 +858,7 @@ export const handleStripeWebhook = async (req, res) => {
   res.send();
 };
 
-// 3. MANUAL CONFIRM
+// 3. MANUAL CONFIRM (Fallback)
 export const confirmPayment = async (req, res) => {
   try {
     const { paymentId } = req.body;
@@ -867,7 +904,7 @@ export const getInvoice = async (req, res) => {
   }
 };
 
-// 5. GET PAYMENTS
+// 5. GET ALL PAYMENTS (Admin)
 export const getPayments = async (req, res) => {
   try {
     const payments = await Payment.find().populate('order');
@@ -877,7 +914,7 @@ export const getPayments = async (req, res) => {
   }
 };
 
-// 6. GET SESSION
+// 6. GET PAYMENT BY SESSION ID
 export const getPaymentBySession = async (req, res) => {
   try {
     const { sessionId } = req.params;
