@@ -152,9 +152,32 @@
 
 
 
-// backend/Routes/chatRoutes.js
+// // backend/Routes/chatRoutes.js
+// import express from "express";
+// import { sendMessage, getChatHistory, getAllChats, deleteChatAdmin } from "../Controllers/chatController.js";
+// import { verifyToken } from "../Middleware/authMiddleware.js";
+
+// const router = express.Router();
+
+// // USER ROUTES
+// router.post("/send", verifyToken, sendMessage);
+// router.get("/history", verifyToken, getChatHistory);
+
+// // ADMIN ROUTES (no verifyAdmin)
+// router.get("/all", verifyToken, getAllChats);
+// router.delete("/delete/:id", verifyToken, deleteChatAdmin);
+
+// export default router;
+
+
 import express from "express";
-import { sendMessage, getChatHistory, getAllChats, deleteChatAdmin } from "../Controllers/chatController.js";
+import { 
+  sendMessage, 
+  getChatHistory, 
+  clearUserHistory, // <--- Import this
+  getAllChats, 
+  deleteChatAdmin 
+} from "../Controllers/chatController.js";
 import { verifyToken } from "../Middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -162,8 +185,9 @@ const router = express.Router();
 // USER ROUTES
 router.post("/send", verifyToken, sendMessage);
 router.get("/history", verifyToken, getChatHistory);
+router.delete("/clear", verifyToken, clearUserHistory); // <--- Add this Route
 
-// ADMIN ROUTES (no verifyAdmin)
+// ADMIN ROUTES
 router.get("/all", verifyToken, getAllChats);
 router.delete("/delete/:id", verifyToken, deleteChatAdmin);
 
