@@ -740,52 +740,46 @@ dotenv.config();
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-// 1. CREATE PAYMENT SESSION (Updated for LKR & Debugging)
+// 1. CREATE PAYMENT SESSION
 export const createPayment = async (req, res) => {
-  console.log("⚡ Initiating Payment...");
-
   try {
     const { orderId, amount } = req.body;
+    console.log(`⚡ Initiating Payment for Order: ${orderId}, Amount: ${amount}`);
 
-    // 1. Validate User Authentication
-    // If your authMiddleware didn't run or failed, req.user might be undefined
+    // CHECK 1: User Auth
     if (!req.user || !req.user.id) {
-      console.error("❌ Payment Error: User not found in request (Auth failed)");
-      return res.status(401).json({ message: "User not authenticated. Please log in again." });
+      return res.status(401).json({ message: "User authentication failed" });
     }
 
-    // 2. Validate Order
+    // CHECK 2: Order Exists
     const order = await Order.findById(orderId);
-    if (!order) {
-      console.error(`❌ Payment Error: Order ${orderId} not found`);
-      return res.status(404).json({ message: "Order not found" });
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    // CHECK 3: Minimum Amount for LKR
+    // Stripe requires ~ $0.50 USD. In LKR this is approx 150-180.
+    // We set 200 LKR as the safety limit.
+    if (amount < 200) {
+        console.error("❌ Error: Amount too low for Stripe LKR");
+        return res.status(400).json({ 
+            message: `Total amount must be at least LKR 200. Your total is LKR ${amount}. Add more items.` 
+        });
     }
-
-    // 3. Prepare Stripe Session
-    // Note: Stripe requires a minimum of approx $0.50 USD. 
-    // In LKR, ensure 'amount' is > 200 LKR to be safe.
-    const currency = "lkr";
-    const unitAmount = Math.round(amount * 100); // Convert to cents
-
-    console.log(`Checking out: Order ${orderId}, Amount: ${amount} ${currency.toUpperCase()}`);
 
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: [{
         price_data: {
-          currency: currency,
-          product_data: { name: `Order #${orderId}` },
-          unit_amount: unitAmount,
+          currency: "lkr",
+          product_data: { name: "Order #" + orderId },
+          unit_amount: Math.round(amount * 100), // Convert to cents
         },
         quantity: 1,
       }],
       mode: "payment",
-      // Ensure these URLs match your actual Frontend domain
       success_url: "https://finalproject-frontend-ues3.vercel.app/payment-success?session_id={CHECKOUT_SESSION_ID}",
       cancel_url: "https://finalproject-frontend-ues3.vercel.app/payment-cancel",
     });
 
-    // 4. Save Pending Payment Record
     const payment = new Payment({
       order: orderId,
       user: req.user.id,
@@ -796,17 +790,11 @@ export const createPayment = async (req, res) => {
     });
 
     await payment.save();
-    console.log(`✅ Session Created: ${session.id}`);
-
     res.status(201).json({ url: session.url });
 
   } catch (err) {
-    console.error("❌ Create Payment Error:", err);
-    
-    // Send specific Stripe error if available (e.g., "Amount too small")
-    const errorMessage = err.raw ? err.raw.message : err.message;
-    
-    res.status(500).json({ message: errorMessage });
+    console.error("❌ Payment Controller Error:", err.message);
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -819,37 +807,25 @@ export const handleStripeWebhook = async (req, res) => {
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
   } catch (err) {
-    console.error(`Webhook Signature Error: ${err.message}`);
+    console.error(`Webhook Error: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
     try {
       const payment = await Payment.findOne({ stripePaymentId: session.id })
-        .populate({
-            path: 'order',
-            populate: { path: 'user' }
-        });
+        .populate({ path: 'order', populate: { path: 'user' } });
 
       if (payment) {
         payment.status = "completed";
         await payment.save();
-        
-        // Update Order Status
         await Order.findByIdAndUpdate(payment.order._id, { status: 'Processing' });
-
-        console.log(`💰 Payment confirmed via Webhook: ${session.id}`);
-
-        // Generate Invoice
-        const invoicePath = await generateInvoice(payment.order, payment);
         
-        // Send Email
+        // Generate & Email Invoice
+        const invoicePath = await generateInvoice(payment.order, payment);
         const customerEmail = payment.order.user?.email || payment.order.customerEmail;
-        if (customerEmail) {
-            await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
-        }
+        if (customerEmail) await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
       }
     } catch (err) {
       console.error("Webhook Logic Error:", err);
@@ -858,7 +834,7 @@ export const handleStripeWebhook = async (req, res) => {
   res.send();
 };
 
-// 3. MANUAL CONFIRM (Fallback)
+// 3. MANUAL CONFIRM
 export const confirmPayment = async (req, res) => {
   try {
     const { paymentId } = req.body;
@@ -872,10 +848,7 @@ export const confirmPayment = async (req, res) => {
 
     const invoicePath = await generateInvoice(payment.order, payment);
     const customerEmail = payment.order.user?.email;
-    
-    if (customerEmail) {
-        await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
-    }
+    if (customerEmail) await sendInvoiceEmail(customerEmail, payment.order, invoicePath);
 
     res.status(200).json({ message: "Confirmed & Emailed", invoicePath });
   } catch (err) {
@@ -883,20 +856,17 @@ export const confirmPayment = async (req, res) => {
   }
 };
 
-// 4. DOWNLOAD INVOICE
+// 4. GET INVOICE
 export const getInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
     const payment = await Payment.findOne({ order: orderId }).populate("order");
-    
     if (!payment) return res.status(404).json({ message: "Payment not found" });
 
     const invoiceName = `invoice-${payment.order._id}.pdf`;
     const invoicePath = path.resolve("invoices", invoiceName);
 
-    if (!fs.existsSync(invoicePath)) {
-        await generateInvoice(payment.order, payment);
-    }
+    if (!fs.existsSync(invoicePath)) await generateInvoice(payment.order, payment);
 
     res.download(invoicePath);
   } catch (err) {
@@ -904,7 +874,7 @@ export const getInvoice = async (req, res) => {
   }
 };
 
-// 5. GET ALL PAYMENTS (Admin)
+// 5. GET PAYMENTS
 export const getPayments = async (req, res) => {
   try {
     const payments = await Payment.find().populate('order');
@@ -914,7 +884,7 @@ export const getPayments = async (req, res) => {
   }
 };
 
-// 6. GET PAYMENT BY SESSION ID
+// 6. GET SESSION
 export const getPaymentBySession = async (req, res) => {
   try {
     const { sessionId } = req.params;
