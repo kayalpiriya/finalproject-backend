@@ -725,99 +725,8 @@
 //   }
 // };
 
-// //work code //
-// // backend/controllers/chatController.js
-// import Chat from "../Models/Chat.js";
-// import { GoogleGenAI } from "@google/genai";
-// import dotenv from "dotenv";
-// dotenv.config();
-
-// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-// const ai = new GoogleGenAI({
-//   apiKey: GEMINI_API_KEY,
-// });
-
-// export const sendMessage = async (req, res) => {
-//   try {
-//     const { message } = req.body;
-
-//     // Gemini Request
-//     const resp = await ai.models.generateContent({
-//       model: "gemini-2.5-flash",
-//       contents: message,
-//       generationConfig: {
-//         temperature: 0.4,
-//         maxOutputTokens: 80, // short reply
-//       },
-//     });
-
-//     // Convert response safely
-//     let botResponse = resp.text || "Sorry, I couldn't understand.";
-
-//     // Force 2–3 lines max
-//     botResponse = botResponse
-//       .split("\n")
-//       .slice(0, 3)
-//       .join(" ")
-//       .substring(0, 180); // hard cut if needed
-
-//     // Save to DB
-//     const chat = await Chat.create({
-//       user_id: req.user.id,
-//       message,
-//       response: botResponse,
-//     });
-
-//     res.status(201).json(chat);
-//   } catch (err) {
-//     console.error("Error in sendMessage:", err);
-//     res.status(500).json({ message: "Could not send message." });
-//   }
-// };
-
-// // USER chat history
-// export const getChatHistory = async (req, res) => {
-//   try {
-//     const chats = await Chat.find({ user_id: req.user.id }).sort({
-//       createdAt: 1,
-//     });
-//     res.json(chats);
-//   } catch (err) {
-//     console.error("Error in getChatHistory:", err);
-//     res.status(500).json({ message: "Could not get chat history." });
-//   }
-// };
-
-// // ⭐ ADMIN — Get ALL chats from ALL users
-// export const getAllChats = async (req, res) => {
-//   try {
-//     const chats = await Chat.find()
-//       .populate("user_id", "name email")
-//       .sort({ createdAt: -1 });
-
-//     res.json(chats);
-//   } catch (err) {
-//     res.status(500).json({ message: "Error fetching chats." });
-//   }
-// };
-
-// // Admin delete a chat by its ID
-
-// export const deleteChatAdmin = async (req, res) => {
-//   try {
-//     const { id } = req.params;
-//     const chat = await Chat.findById(id);
-//     if (!chat) return res.status(404).json({ message: "Chat not found" });
-
-//     await chat.deleteOne(); // safe for Mongoose >= 6
-//     res.json({ message: "Chat deleted successfully" });
-//   } catch (err) {
-//     console.error("Delete Chat Error:", err);
-//     res.status(500).json({ message: "Could not delete chat", error: err.message });
-//   }
-// };
-
+//work code //
+// backend/controllers/chatController.js
 import Chat from "../Models/Chat.js";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -829,45 +738,31 @@ const ai = new GoogleGenAI({
   apiKey: GEMINI_API_KEY,
 });
 
-// 1. Send Message (With Bakery Context)
 export const sendMessage = async (req, res) => {
   try {
     const { message } = req.body;
 
-    // --- BAKERY CONTEXT (The AI's Brain) ---
-    const context = `
-      You are a helpful and polite AI assistant for a Bakery Shop.
-      
-      Our Menu & Prices:
-      - Chocolate Truffle: $20
-      - Croissant: $3
-      - Red Velvet Cake: $25
-      - Custom Birthday Cakes: Start at $50 (Order 2 days in advance)
-      - We have Eggless and Sugar-free options available.
-      
-      Rules:
-      1. If the user asks for something not on the menu, politely say we don't have it.
-      2. Keep answers short (max 3 sentences).
-      3. If asked about "Order Tracking", ask them for their Order ID.
-      
-      User Message: "${message}"
-    `;
-
-    // Call Gemini
+    // Gemini Request
     const resp = await ai.models.generateContent({
-      model: "gemini-2.0-flash", // or "gemini-1.5-flash" depending on your access
-      contents: { role: "user", parts: [{ text: context }] },
+      model: "gemini-2.5-flash",
+      contents: message,
       generationConfig: {
-        maxOutputTokens: 150,
-        temperature: 0.7,
+        temperature: 0.4,
+        maxOutputTokens: 80, // short reply
       },
     });
 
-    // Extract Text safely
-    // Note: Adjust depending on exact SDK version, usually it is response.text()
-    let botResponse = resp.response?.text() || "I am currently busy baking! Please try again.";
+    // Convert response safely
+    let botResponse = resp.text || "Sorry, I couldn't understand.";
 
-    // Save to Database
+    // Force 2–3 lines max
+    botResponse = botResponse
+      .split("\n")
+      .slice(0, 3)
+      .join(" ")
+      .substring(0, 180); // hard cut if needed
+
+    // Save to DB
     const chat = await Chat.create({
       user_id: req.user.id,
       message,
@@ -876,51 +771,49 @@ export const sendMessage = async (req, res) => {
 
     res.status(201).json(chat);
   } catch (err) {
-    console.error("Gemini Error:", err);
-    res.status(500).json({ message: "AI service is currently down." });
+    console.error("Error in sendMessage:", err);
+    res.status(500).json({ message: "Could not send message." });
   }
 };
 
-// 2. Get History
+// USER chat history
 export const getChatHistory = async (req, res) => {
   try {
-    const chats = await Chat.find({ user_id: req.user.id }).sort({ createdAt: 1 });
+    const chats = await Chat.find({ user_id: req.user.id }).sort({
+      createdAt: 1,
+    });
     res.json(chats);
   } catch (err) {
+    console.error("Error in getChatHistory:", err);
     res.status(500).json({ message: "Could not get chat history." });
   }
 };
 
-// 3. Clear History (NEW FUNCTION)
-export const clearUserHistory = async (req, res) => {
-  try {
-    await Chat.deleteMany({ user_id: req.user.id });
-    res.status(200).json({ message: "Chat history cleared." });
-  } catch (err) {
-    console.error("Clear History Error:", err);
-    res.status(500).json({ message: "Could not clear history." });
-  }
-};
-
-// 4. Admin - Get All
+// ⭐ ADMIN — Get ALL chats from ALL users
 export const getAllChats = async (req, res) => {
   try {
     const chats = await Chat.find()
       .populate("user_id", "name email")
       .sort({ createdAt: -1 });
+
     res.json(chats);
   } catch (err) {
     res.status(500).json({ message: "Error fetching chats." });
   }
 };
 
-// 5. Admin - Delete Single
+// Admin delete a chat by its ID
+
 export const deleteChatAdmin = async (req, res) => {
   try {
     const { id } = req.params;
-    await Chat.findByIdAndDelete(id);
+    const chat = await Chat.findById(id);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    await chat.deleteOne(); // safe for Mongoose >= 6
     res.json({ message: "Chat deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Could not delete chat" });
+    console.error("Delete Chat Error:", err);
+    res.status(500).json({ message: "Could not delete chat", error: err.message });
   }
 };
