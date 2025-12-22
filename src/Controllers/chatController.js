@@ -725,44 +725,141 @@
 //   }
 // };
 
-//work code //
-// backend/controllers/chatController.js
+// //work code //
+// // backend/controllers/chatController.js
+// import Chat from "../Models/Chat.js";
+// import { GoogleGenAI } from "@google/genai";
+// import dotenv from "dotenv";
+// dotenv.config();
+
+// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+// const ai = new GoogleGenAI({
+//   apiKey: GEMINI_API_KEY,
+// });
+
+// export const sendMessage = async (req, res) => {
+//   try {
+//     const { message } = req.body;
+
+//     // Gemini Request
+//     const resp = await ai.models.generateContent({
+//       model: "gemini-2.5-flash",
+//       contents: message,
+//       generationConfig: {
+//         temperature: 0.4,
+//         maxOutputTokens: 80, // short reply
+//       },
+//     });
+
+//     // Convert response safely
+//     let botResponse = resp.text || "Sorry, I couldn't understand.";
+
+//     // Force 2–3 lines max
+//     botResponse = botResponse
+//       .split("\n")
+//       .slice(0, 3)
+//       .join(" ")
+//       .substring(0, 180); // hard cut if needed
+
+//     // Save to DB
+//     const chat = await Chat.create({
+//       user_id: req.user.id,
+//       message,
+//       response: botResponse,
+//     });
+
+//     res.status(201).json(chat);
+//   } catch (err) {
+//     console.error("Error in sendMessage:", err);
+//     res.status(500).json({ message: "Could not send message." });
+//   }
+// };
+
+// // USER chat history
+// export const getChatHistory = async (req, res) => {
+//   try {
+//     const chats = await Chat.find({ user_id: req.user.id }).sort({
+//       createdAt: 1,
+//     });
+//     res.json(chats);
+//   } catch (err) {
+//     console.error("Error in getChatHistory:", err);
+//     res.status(500).json({ message: "Could not get chat history." });
+//   }
+// };
+
+// // ⭐ ADMIN — Get ALL chats from ALL users
+// export const getAllChats = async (req, res) => {
+//   try {
+//     const chats = await Chat.find()
+//       .populate("user_id", "name email")
+//       .sort({ createdAt: -1 });
+
+//     res.json(chats);
+//   } catch (err) {
+//     res.status(500).json({ message: "Error fetching chats." });
+//   }
+// };
+
+// // Admin delete a chat by its ID
+
+// export const deleteChatAdmin = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const chat = await Chat.findById(id);
+//     if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+//     await chat.deleteOne(); // safe for Mongoose >= 6
+//     res.json({ message: "Chat deleted successfully" });
+//   } catch (err) {
+//     console.error("Delete Chat Error:", err);
+//     res.status(500).json({ message: "Could not delete chat", error: err.message });
+//   }
+// };
+
+
 import Chat from "../Models/Chat.js";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai"; // Using the stable SDK
 import dotenv from "dotenv";
 dotenv.config();
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-const ai = new GoogleGenAI({
-  apiKey: GEMINI_API_KEY,
-});
+// Initialize Gemini with the API Key
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 export const sendMessage = async (req, res) => {
   try {
     const { message } = req.body;
 
-    // Gemini Request
-    const resp = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: message,
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 80, // short reply
-      },
-    });
+    // 1. SAFETY CHECK: Ensure API Key exists
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is missing in environment variables");
+    }
 
-    // Convert response safely
-    let botResponse = resp.text || "Sorry, I couldn't understand.";
+    // 2. SAFETY CHECK: Ensure User is logged in (from auth middleware)
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({ message: "Unauthorized: User not found." });
+    }
 
-    // Force 2–3 lines max
+    // 3. Connect to the Model (Use a valid model name)
+    // Valid models: "gemini-1.5-flash", "gemini-pro"
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // 4. Send Request to Gemini
+    const result = await model.generateContent(message);
+    const response = await result.response;
+    let botResponse = response.text();
+
+    // 5. Cleanup Response (Limit length)
+    if (!botResponse) botResponse = "Sorry, I couldn't understand that.";
+    
     botResponse = botResponse
       .split("\n")
-      .slice(0, 3)
+      .slice(0, 3) // Take first 3 lines
       .join(" ")
-      .substring(0, 180); // hard cut if needed
+      .substring(0, 180); // Limit characters
 
-    // Save to DB
+    // 6. Save to Database
     const chat = await Chat.create({
       user_id: req.user.id,
       message,
@@ -770,22 +867,30 @@ export const sendMessage = async (req, res) => {
     });
 
     res.status(201).json(chat);
+
   } catch (err) {
     console.error("Error in sendMessage:", err);
-    res.status(500).json({ message: "Could not send message." });
+    // Return the ACTUAL error message to help you debug
+    res.status(500).json({ 
+      message: "Could not send message.", 
+      error: err.message // <--- Check your browser network tab for this!
+    });
   }
 };
 
 // USER chat history
 export const getChatHistory = async (req, res) => {
   try {
+    if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: "Unauthorized" });
+    }
     const chats = await Chat.find({ user_id: req.user.id }).sort({
       createdAt: 1,
     });
     res.json(chats);
   } catch (err) {
     console.error("Error in getChatHistory:", err);
-    res.status(500).json({ message: "Could not get chat history." });
+    res.status(500).json({ message: "Could not get chat history.", error: err.message });
   }
 };
 
@@ -798,19 +903,19 @@ export const getAllChats = async (req, res) => {
 
     res.json(chats);
   } catch (err) {
-    res.status(500).json({ message: "Error fetching chats." });
+    console.error("Error in getAllChats:", err);
+    res.status(500).json({ message: "Error fetching chats.", error: err.message });
   }
 };
 
 // Admin delete a chat by its ID
-
 export const deleteChatAdmin = async (req, res) => {
   try {
     const { id } = req.params;
     const chat = await Chat.findById(id);
     if (!chat) return res.status(404).json({ message: "Chat not found" });
 
-    await chat.deleteOne(); // safe for Mongoose >= 6
+    await chat.deleteOne(); 
     res.json({ message: "Chat deleted successfully" });
   } catch (err) {
     console.error("Delete Chat Error:", err);
