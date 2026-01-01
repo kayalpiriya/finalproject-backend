@@ -37,7 +37,7 @@ app.use(
   cors({
     origin: [
       "https://finalproject-frontend-inky.vercel.app", 
-      "https://finalproject-frontend-ues3.vercel.app",
+      // "https://finalproject-frontend-ues3.vercel.app",
       "https://finalproject-frontend-ues3-c2t1krzps-kayalpiriyas-projects.vercel.app",
       "http://localhost:5173"
     ],
